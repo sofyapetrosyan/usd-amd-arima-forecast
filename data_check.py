@@ -19,12 +19,13 @@ data = pd.read_excel(
 data["date"] = pd.to_datetime(data["date"])
 data = data.dropna(subset=["date", "usd_amd"]).sort_values("date")
 
+# Keep the final 20% for the main evaluation; tune model orders inside the first 80%.
 split_index = int(len(data) * 0.8)
 train = data.iloc[:split_index]
 test = data.iloc[split_index:].copy()
 train_values = train["usd_amd"].astype(float)
 
-# Check stationarity using training data only.
+# ADF test on training data only.
 adf_original = adfuller(train_values, maxlag=5, autolag=None, result_object=False)
 adf_difference = adfuller(
     train_values.diff().dropna(), maxlag=5, autolag=None, result_object=False
@@ -32,31 +33,44 @@ adf_difference = adfuller(
 print("Սկզբնական շարքի ADF p-value՝", round(adf_original[1], 4))
 print("Առաջին տարբերության ADF p-value՝", round(adf_difference[1], 4))
 
-# Compare candidate p and q values using AIC on the training data.
+# Use the last 20% of training data as a validation period for choosing p and q.
+validation_split = int(len(train_values) * 0.8)
+validation_train = train_values.iloc[:validation_split]
+validation_values = train_values.iloc[validation_split:]
 candidate_orders = [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 1), (1, 1, 2)]
-model_results = []
+validation_results = []
 
 for order in candidate_orders:
-    fitted_model = ARIMA(train_values, order=order).fit()
-    model_results.append((fitted_model.aic, order, fitted_model))
-    print("ARIMA", order, "AIC՝", round(fitted_model.aic, 3))
+    validation_fit = ARIMA(validation_train, order=order).fit()
+    validation_forecast = validation_fit.forecast(steps=len(validation_values)).to_numpy()
+    validation_errors = validation_values.to_numpy() - validation_forecast
+    validation_mae = abs(validation_errors).mean()
+    validation_rmse = (validation_errors ** 2).mean() ** 0.5
+    validation_results.append((validation_mae, order))
+    print(
+        "ARIMA", order,
+        "validation MAE՝", round(validation_mae, 3),
+        "validation RMSE՝", round(validation_rmse, 3),
+    )
 
-best_aic, best_order, best_model = min(model_results, key=lambda result: result[0])
-print("Ընտրված կարգը՝", best_order)
+best_order = min(validation_results, key=lambda result: result[0])[1]
+print("\nValidation-ով ընտրված կարգը՝", best_order)
 
-test["arima_forecast"] = best_model.forecast(steps=len(test)).to_numpy()
-arima_errors = test["usd_amd"] - test["arima_forecast"]
-arima_mae = arima_errors.abs().mean()
-arima_rmse = (arima_errors.pow(2).mean()) ** 0.5
+# Refit the selected order on all training data, then evaluate once on the final test period.
+final_fit = ARIMA(train_values, order=best_order).fit()
+test["arima_forecast"] = final_fit.forecast(steps=len(test)).to_numpy()
+arima_errors = test["usd_amd"].to_numpy() - test["arima_forecast"].to_numpy()
+arima_mae = abs(arima_errors).mean()
+arima_rmse = (arima_errors ** 2).mean() ** 0.5
 
 last_train_value = train_values.iloc[-1]
 test["naive_forecast"] = last_train_value
-naive_errors = test["usd_amd"] - test["naive_forecast"]
-naive_mae = naive_errors.abs().mean()
-naive_rmse = (naive_errors.pow(2).mean()) ** 0.5
+naive_errors = test["usd_amd"].to_numpy() - test["naive_forecast"].to_numpy()
+naive_mae = abs(naive_errors).mean()
+naive_rmse = (naive_errors ** 2).mean() ** 0.5
 
-print("\nԸնտրված ARIMA", best_order, "MAE՝", round(arima_mae, 3))
-print("Ընտրված ARIMA", best_order, "RMSE՝", round(arima_rmse, 3))
+print("\nՎերջնական ARIMA", best_order, "MAE՝", round(arima_mae, 3))
+print("Վերջնական ARIMA", best_order, "RMSE՝", round(arima_rmse, 3))
 print("Պարզ կանխատեսման MAE՝", round(naive_mae, 3))
 print("Պարզ կանխատեսման RMSE՝", round(naive_rmse, 3))
 print("Ուսուցման տվյալների քանակը՝", len(train))
