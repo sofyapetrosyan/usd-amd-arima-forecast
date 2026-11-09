@@ -1,5 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+project_dir = Path(__file__).resolve().parent
 
 file_path = r"C:\Users\SOFI\Desktop\USD_AMD_Forecast\usd_amd_data.xlsx"
 
@@ -45,5 +48,20 @@ plt.ylabel("AMD per 1 USD")
 plt.grid(True, alpha=0.3)
 plt.legend()
 plt.tight_layout()
-plt.savefig("usd_amd_exchange_rate.png", dpi=160)
+plt.savefig(project_dir / "usd_amd_exchange_rate.png", dpi=160)
 print("Գրաֆիկը պահպանվել է՝ usd_amd_exchange_rate.png")
+
+data["daily_change"] = data["usd_amd"].diff()
+
+plt.figure(figsize=(11, 5))
+plt.plot(data["date"], data["daily_change"], color="purple", linewidth=1)
+plt.axhline(0, color="black", linestyle="--", linewidth=1)
+plt.title("Daily Change in USD/AMD")
+plt.xlabel("Date")
+plt.ylabel("Change in AMD")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig(project_dir / "usd_amd_daily_changes.png", dpi=160)
+
+print("Օրական փոփոխությունների գրաֆիկը պահպանվել է՝ usd_amd_daily_changes.png")
+
