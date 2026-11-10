@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.stattools import adfuller
+from statsmodels.stats.diagnostic import acorr_ljungbox
+from statsmodels.graphics.tsaplots import plot_acf
 
 project_dir = Path(__file__).resolve().parent
 file_path = r"C:\Users\SOFI\Desktop\USD_AMD_Forecast\usd_amd_data.xlsx"
@@ -37,7 +39,19 @@ print("Առաջին տարբերության ADF p-value՝", round(adf_differenc
 validation_split = int(len(train_values) * 0.8)
 validation_train = train_values.iloc[:validation_split]
 validation_values = train_values.iloc[validation_split:]
-candidate_orders = [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 1), (1, 1, 2)]
+candidate_orders = [
+    (0, 1, 1),
+    (1, 1, 0),
+    (1, 1, 1),
+    (2, 1, 1),
+    (1, 1, 2),
+    (3, 1, 0),
+    (4, 1, 0),
+    (0, 1, 2),
+    (0, 1, 3),
+    (1, 1, 3),
+    (2, 1, 2),
+]
 validation_results = []
 
 for order in candidate_orders:
@@ -56,8 +70,12 @@ for order in candidate_orders:
 best_order = min(validation_results, key=lambda result: result[0])[1]
 print("\nValidation-ով ընտրված կարգը՝", best_order)
 
-# Refit the selected order on all training data, then evaluate once on the final test period.
+
 final_fit = ARIMA(train_values, order=best_order).fit()
+residuals = final_fit.resid[1:]
+
+ljung_box = acorr_ljungbox(residuals, lags=[10], model_df=best_order[0] + best_order[2], return_df=True)
+print("Մնացորդների Ljung-Box p-value՝", round(ljung_box["lb_pvalue"].iloc[0], 4))
 test["arima_forecast"] = final_fit.forecast(steps=len(test)).to_numpy()
 arima_errors = test["usd_amd"].to_numpy() - test["arima_forecast"].to_numpy()
 arima_mae = abs(arima_errors).mean()
@@ -101,6 +119,14 @@ plt.savefig(project_dir / "usd_amd_exchange_rate.png", dpi=160)
 print("Գրաֆիկը պահպանվել է՝ usd_amd_exchange_rate.png")
 
 data["daily_change"] = data["usd_amd"].diff()
+data["abs_change"] = data["daily_change"].abs()
+
+largest_changes = data.nlargest(10, "abs_change")[
+    ["date", "usd_amd", "daily_change"]
+]
+
+print("\nԱմենամեծ օրական փոփոխությունները՝")
+print(largest_changes.to_string(index=False))
 plt.figure(figsize=(11, 5))
 plt.plot(data["date"], data["daily_change"], color="purple", linewidth=1)
 plt.axhline(0, color="black", linestyle="--", linewidth=1)
@@ -111,3 +137,19 @@ plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig(project_dir / "usd_amd_daily_changes.png", dpi=160)
 print("Օրական փոփոխությունների գրաֆիկը պահպանվել է՝ usd_amd_daily_changes.png")
+
+plt.figure(figsize=(11, 4))
+plt.plot(train["date"].iloc[1:], residuals, color="teal", linewidth=1)
+plt.axhline(0, color="black", linestyle="--")
+plt.title(f"Residuals of ARIMA{best_order}")
+plt.xlabel("Date")
+plt.ylabel("Residual")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig(project_dir / "arima_residuals.png", dpi=160)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+plot_acf(residuals, lags=30, zero=False, ax=ax)
+ax.set_title(f"Residual ACF for ARIMA{best_order}")
+plt.tight_layout()
+plt.savefig(project_dir / "arima_residual_acf.png", dpi=160)
