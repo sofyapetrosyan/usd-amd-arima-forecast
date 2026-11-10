@@ -153,3 +153,54 @@ plot_acf(residuals, lags=30, zero=False, ax=ax)
 ax.set_title(f"Residual ACF for ARIMA{best_order}")
 plt.tight_layout()
 plt.savefig(project_dir / "arima_residual_acf.png", dpi=160)
+
+# Վերապատրաստում ենք ընտրված մոդելը բոլոր դիտարկումներով
+full_model = ARIMA(data["usd_amd"].astype(float), order=best_order).fit()
+
+future_steps = 30
+future_result = full_model.get_forecast(steps=future_steps)
+future_values = future_result.predicted_mean.to_numpy()
+future_interval = future_result.conf_int(alpha=0.05)
+
+# Հաջորդ 30 աշխատանքային օրերը՝ շաբաթ և կիրակի օրերը բաց թողնելով
+future_dates = pd.bdate_range(
+    start=data["date"].max() + pd.offsets.BDay(1),
+    periods=future_steps,
+)
+
+future_forecast = pd.DataFrame({
+    "date": future_dates,
+    "forecast": future_values,
+    "lower_95": future_interval.iloc[:, 0].to_numpy(),
+    "upper_95": future_interval.iloc[:, 1].to_numpy(),
+})
+
+print("\nԿանխատեսման առաջին 5 կետը՝")
+print(
+    future_forecast.head().to_string(
+        index=False,
+        formatters={
+            "forecast": "{:.2f}".format,
+            "lower_95": "{:.2f}".format,
+            "upper_95": "{:.2f}".format,
+        },
+    )
+)
+plt.figure(figsize=(11, 5))
+plt.plot(data["date"], data["usd_amd"], label="Historical USD/AMD")
+plt.plot(future_dates, future_values, label="30-step ARIMA forecast", color="green")
+plt.fill_between(
+    future_dates,
+    future_interval.iloc[:, 0].to_numpy(),
+    future_interval.iloc[:, 1].to_numpy(),
+    color="green",
+    alpha=0.2,
+    label="95% prediction interval",
+)
+plt.title(f"Preliminary USD/AMD Forecast: ARIMA{best_order}")
+plt.xlabel("Date")
+plt.ylabel("AMD per 1 USD")
+plt.grid(True, alpha=0.3)
+plt.legend()
+plt.tight_layout()
+plt.savefig(project_dir / "usd_amd_future_forecast.png", dpi=160)
