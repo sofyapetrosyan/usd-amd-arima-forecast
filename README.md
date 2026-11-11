@@ -78,3 +78,15 @@ python -m venv .venv
 1. Hyndman, R. J., Athanasopoulos, G. *Forecasting: Principles and Practice*, 3rd edition. [Առցանց գիրք](https://otexts.com/fpp3/)
 2. Hamilton, J. D. *Time Series Analysis*. Princeton University Press, 1994.
 3. Հայաստանի Կենտրոնական բանկ։ [Փոխարժեքների արխիվ](https://old.cba.am/EN/SitePages/ExchangeArchive.aspx?DateTo=2025-10-01&ISOCodes=USD)
+
+## Մնացորդների ստուգում
+
+Ljung-Box թեստի p-value-ն շատ փոքր է (տպվել է՝ 0.0)։ Սա ցույց է տալիս, որ մոդելի մնացորդներում դեռ ավտոկոռելյացիա կա, և ARIMA(1, 1, 2)-ը չի նկարագրում տվյալների բոլոր օրինաչափությունները։
+
+### Մնացորդների գրաֆիկ
+
+![ARIMA մոդելի մնացորդները](arima_residuals.png)
+
+### Մնացորդների ACF գրաֆիկ
+
+![Մնացորդների ավտոկոռելյացիան](arima_residual_acf.png)
