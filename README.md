@@ -72,3 +72,9 @@ Excel տվյալները գտնվում են `data/usd_amd_data.xlsx` ֆայլո
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe data_check.py
+
+## Օգտագործված աղբյուրներ
+
+1. Hyndman, R. J., Athanasopoulos, G. *Forecasting: Principles and Practice*, 3rd edition. [Առցանց գիրք](https://otexts.com/fpp3/)
+2. Hamilton, J. D. *Time Series Analysis*. Princeton University Press, 1994.
+3. Հայաստանի Կենտրոնական բանկ։ [Փոխարժեքների արխիվ](https://old.cba.am/EN/SitePages/ExchangeArchive.aspx?DateTo=2025-10-01&ISOCodes=USD)
