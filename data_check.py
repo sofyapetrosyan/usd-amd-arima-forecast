@@ -7,8 +7,7 @@ from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.graphics.tsaplots import plot_acf
 
 project_dir = Path(__file__).resolve().parent
-file_path = r"C:\Users\SOFI\Desktop\USD_AMD_Forecast\usd_amd_data.xlsx"
-
+file_path = project_dir / "data" / "usd_amd_data.xlsx"
 data = pd.read_excel(
     file_path,
     sheet_name="USD_AMD_Dataset ",
